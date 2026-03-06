@@ -6488,10 +6488,12 @@ function renderDocumentsPage() {
       document.getElementById('portraitBtn').addEventListener('click', enterPortrait);
 
       // Set up top buttons
-      document.getElementById('youtubeBtn').addEventListener('click', () => {
-        // Open in YouTube directly without tracking
-        window.open(videoUrl, '_blank');
-      });
+      const youtubeBtn = document.getElementById('youtubeBtn');
+if (youtubeBtn) {
+  youtubeBtn.addEventListener('click', function() {
+    window.open(videoUrl, '_blank');
+  });
+}
 
       // Set up blocker for portrait mode exit
       const blocker = document.getElementById('blocker');
