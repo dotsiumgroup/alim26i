@@ -10527,7 +10527,7 @@ body.fullscreen-active {
         // কনফিগারেশন
         const COMMENT_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzCcGJO-IWj7PGh1vHFS75ED-FgfiB8_CUfqC9rq8Y2T549AAtcIE1lJVgsn85mxqbk/exec';
         const TRACKING_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycby-wR1lfAibGkEvbOfS_QM1x4yGDej9Ay8ndh5dPROJc4ks6tNBC58wQlZebQAUQBp0/exec';
-        const CHANNEL_ID = 'UCUPV9vtmy0SJIE5RzV3blrw';
+        const CHANNEL_ID = 'UCN6sm8iHiPd0cnoUardDAnw';
         let isLiveClass = true;
 
         // গ্লোবাল ভেরিয়েবল (প্লেয়ারের)
@@ -12640,6 +12640,219 @@ const SPECIAL_SUBJECTS = [
   window.showAdminMainModal = showAdminMainModal;
 })();
   </script>
-  
+  <!-- ========== ভিডিও স্পিড ও কোয়ালিটি কন্ট্রোল (অটো-ইনজেক্ট) ========== -->
+<style>
+  /* কন্ট্রোল বাটনের স্টাইল - ছোট ও সুন্দর */
+  .custom-speed-select, .custom-quality-select {
+    background: linear-gradient(135deg, #ff7e5f, #feb47b) !important;
+    border: none !important;
+    border-radius: 20px !important;
+    color: white !important;
+    font-weight: 600 !important;
+    font-size: 12px !important;
+    padding: 5px 8px !important;
+    margin: 0 4px !important;
+    cursor: pointer !important;
+    outline: none !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+    transition: 0.2s !important;
+    width: auto !important;
+    min-width: 55px !important;
+    text-align: center !important;
+  }
+  .custom-speed-select:hover, .custom-quality-select:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.4) !important;
+  }
+  .custom-speed-select option, .custom-quality-select option {
+    background: #1a1a2e !important;
+    color: white !important;
+  }
+  /* Play/Pause বাটনের পাশে বসানোর জন্য রো-তে ফ্লেক্স অ্যাডজাস্ট */
+  .control-row {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    flex-wrap: wrap !important;
+  }
+  /* লাইভ প্লেয়ারে স্পিড বাটন নিষ্ক্রিয় থাকলে */
+  .custom-speed-select:disabled {
+    opacity: 0.5 !important;
+    cursor: not-allowed !important;
+    background: #666 !important;
+  }
+</style>
+
+<script>
+(function() {
+  'use strict';
+
+  // ---------- ১. স্পিড ও কোয়ালিটি সিলেক্টর HTML তৈরি ও ইনজেক্ট ----------
+  function injectControls() {
+    // সাধারণ ভিডিও প্লেয়ার পৃষ্ঠার জন্য
+    const normalControlRow = document.querySelector('#video-player-page .control-row:first-child');
+    if (normalControlRow && !document.getElementById('speed-select')) {
+      const speedSelect = document.createElement('select');
+      speedSelect.id = 'speed-select';
+      speedSelect.className = 'btn custom-speed-select';
+      speedSelect.innerHTML = `
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      `;
+
+      const qualitySelect = document.createElement('select');
+      qualitySelect.id = 'quality-select';
+      qualitySelect.className = 'btn custom-quality-select';
+      qualitySelect.innerHTML = `
+        <option value="small">360p</option>
+        <option value="medium">480p</option>
+        <option value="large">720p</option>
+        <option value="hd1080">1080p</option>
+        <option value="highres">2K/4K</option>
+      `;
+
+      normalControlRow.prepend(speedSelect);
+      normalControlRow.appendChild(qualitySelect);
+    }
+
+    // লাইভ প্লেয়ার পৃষ্ঠার জন্য (alim- prefix)
+    const liveControlRow = document.querySelector('#alim-live-player .control-row:first-child');
+    if (liveControlRow && !document.getElementById('alim-speed-select')) {
+      const alimSpeedSelect = document.createElement('select');
+      alimSpeedSelect.id = 'alim-speed-select';
+      alimSpeedSelect.className = 'btn custom-speed-select';
+      alimSpeedSelect.innerHTML = `
+        <option value="0.5">0.5x</option>
+        <option value="1" selected>1x</option>
+        <option value="1.5">1.5x</option>
+        <option value="2">2x</option>
+      `;
+
+      const alimQualitySelect = document.createElement('select');
+      alimQualitySelect.id = 'alim-quality-select';
+      alimQualitySelect.className = 'btn custom-quality-select';
+      alimQualitySelect.innerHTML = `
+        <option value="small">360p</option>
+        <option value="medium">480p</option>
+        <option value="large">720p</option>
+        <option value="hd1080">1080p</option>
+        <option value="highres">2K/4K</option>
+      `;
+
+      liveControlRow.prepend(alimSpeedSelect);
+      liveControlRow.appendChild(alimQualitySelect);
+    }
+  }
+
+  // ---------- ২. ইউটিউব প্লেয়ার রেফারেন্স পাওয়ার ফাংশন ----------
+  function getActivePlayer() {
+    // কোন পৃষ্ঠা দৃশ্যমান?
+    if (document.getElementById('video-player-page')?.style.display === 'block') {
+      return YT.get('player'); // সাধারণ ভিডিও প্লেয়ার
+    }
+    if (document.getElementById('alim-live-player')?.style.display === 'block') {
+      return YT.get('alim-player'); // লাইভ প্লেয়ার
+    }
+    return null;
+  }
+
+  // ---------- ৩. সিলেক্টর পরিবর্তন ইভেন্ট হ্যান্ডলার ----------
+  function handleSpeedChange(e) {
+    const player = getActivePlayer();
+    if (!player) {
+      alert('প্লেয়ার প্রস্তুত নয়, একটু পরে আবার চেষ্টা করুন।');
+      return;
+    }
+    const speed = parseFloat(e.target.value);
+    try {
+      player.setPlaybackRate(speed);
+    } catch (err) {
+      console.warn('স্পিড সেট করতে সমস্যা:', err);
+    }
+  }
+
+  function handleQualityChange(e) {
+    const player = getActivePlayer();
+    if (!player) {
+      alert('প্লেয়ার প্রস্তুত নয়, একটু পরে আবার চেষ্টা করুন।');
+      return;
+    }
+    const quality = e.target.value;
+    try {
+      player.setPlaybackQuality(quality);
+    } catch (err) {
+      console.warn('কোয়ালিটি সেট করতে সমস্যা:', err);
+    }
+  }
+
+  // ---------- ৪. ইভেন্ট লিসেনার সংযুক্ত করা ----------
+  function attachListeners() {
+    // সাধারণ ভিডিও
+    const speedSel = document.getElementById('speed-select');
+    const qualSel = document.getElementById('quality-select');
+    if (speedSel && !speedSel._hasListener) {
+      speedSel.addEventListener('change', handleSpeedChange);
+      speedSel._hasListener = true;
+    }
+    if (qualSel && !qualSel._hasListener) {
+      qualSel.addEventListener('change', handleQualityChange);
+      qualSel._hasListener = true;
+    }
+
+    // লাইভ ভিডিও
+    const alimSpeedSel = document.getElementById('alim-speed-select');
+    const alimQualSel = document.getElementById('alim-quality-select');
+    if (alimSpeedSel && !alimSpeedSel._hasListener) {
+      alimSpeedSel.addEventListener('change', handleSpeedChange);
+      alimSpeedSel._hasListener = true;
+    }
+    if (alimQualSel && !alimQualSel._hasListener) {
+      alimQualSel.addEventListener('change', handleQualityChange);
+      alimQualSel._hasListener = true;
+    }
+
+    // লাইভ হলে স্পিড বাটন নিষ্ক্রিয় করা (ঐচ্ছিক)
+    const livePlayerVisible = document.getElementById('alim-live-player')?.style.display === 'block';
+    if (livePlayerVisible && alimSpeedSel) {
+      alimSpeedSel.disabled = true; // লাইভ স্ট্রিমে স্পিড পরিবর্তন অকার্যকর
+    } else if (alimSpeedSel) {
+      alimSpeedSel.disabled = false;
+    }
+  }
+
+  // ---------- ৫. পৃষ্ঠা পরিবর্তন নিরীক্ষণ (MutationObserver) ----------
+  function observePageChanges() {
+    const targetNode = document.body;
+    const observer = new MutationObserver(() => {
+      injectControls();         // নতুন কন্ট্রোল যোগ (যদি না থাকে)
+      attachListeners();        // লিসেনার সংযুক্ত
+    });
+    observer.observe(targetNode, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+  }
+
+  // ---------- ৬. ইউটিউব API লোড হওয়া পর্যন্ত অপেক্ষা ----------
+  function waitForYT() {
+    if (typeof YT !== 'undefined' && YT.loaded) {
+      injectControls();
+      attachListeners();
+      observePageChanges();
+    } else {
+      setTimeout(waitForYT, 200);
+    }
+  }
+
+  // শুরু করা
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', waitForYT);
+  } else {
+    waitForYT();
+  }
+
+})();
+</script>
+<!-- ========== শেষ ========== -->
+
 </body>
 </html>
