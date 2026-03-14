@@ -12853,6 +12853,103 @@ const SPECIAL_SUBJECTS = [
 })();
 </script>
 <!-- ========== শেষ ========== -->
+<script>
+(function() {
+    'use strict';
 
+    // ==================== ভিডিও প্লেয়ার পৃষ্ঠার জন্য (রেকর্ডেড ক্লাস) ====================
+    const videoBlocker = document.getElementById('blocker');
+    // ==================== লাইভ প্লেয়ার পৃষ্ঠার জন্য ====================
+    const liveBlocker = document.getElementById('alim-blocker');
+
+    /**
+     * ইউটিউব iframe-এ প্লে কমান্ড পাঠান (লাইভ প্লেয়ারের জন্য)
+     */
+    function sendPlayCommandToIframe(iframe) {
+        if (!iframe || !iframe.contentWindow) return;
+        try {
+            // YouTube IFrame API প্লে কমান্ড
+            iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+        } catch (e) {
+            console.warn('iframe-এ প্লে কমান্ড পাঠাতে সমস্যা:', e);
+        }
+    }
+
+    /**
+     * গ্লোবাল videoPlayer অবজেক্ট থাকলে প্লে করুন (রেকর্ডেড প্লেয়ারের জন্য)
+     */
+    function playVideoPlayer() {
+        if (window.videoPlayer && typeof window.videoPlayer.playVideo === 'function') {
+            window.videoPlayer.playVideo();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * ক্লিক ইভেন্ট হ্যান্ডলার (ক্যাপচার ফেজে)
+     */
+    function handleBlockerClick(event) {
+        const blocker = event.currentTarget; // বর্তমান ব্লকার এলিমেন্ট
+
+        // 1. ফুলস্ক্রিন মোড চেক করুন (fullscreen-landscape ক্লাস)
+        const isFullscreen = blocker.closest('.fullscreen-landscape') !== null;
+        if (isFullscreen) {
+            // ফুলস্ক্রিনে থাকলে পুরোনো আচরণই চলবে (আমরা কিছু করি না)
+            return;
+        }
+
+        // 2. ক্লিক পজিশন বের করুন
+        const rect = blocker.getBoundingClientRect();
+        const clickX = event.clientX;
+        const clickY = event.clientY;
+
+        // ব্লকারের সীমানার মধ্যে ক্লিক নিশ্চিত
+        if (clickX < rect.left || clickX > rect.right || clickY < rect.top || clickY > rect.bottom) {
+            return;
+        }
+
+        // ব্লকারের মাঝামাঝি ৫০% অঞ্চল নির্ণয় (width এর 25% থেকে 75%, height এর 25% থেকে 75%)
+        const leftBound = rect.left + rect.width * 0.25;
+        const rightBound = rect.left + rect.width * 0.75;
+        const topBound = rect.top + rect.height * 0.25;
+        const bottomBound = rect.top + rect.height * 0.75;
+
+        const isInMiddle = (clickX >= leftBound && clickX <= rightBound && clickY >= topBound && clickY <= bottomBound);
+
+        if (!isInMiddle) {
+            // মাঝখানে নয় -> কিছু করি না (পুরোনো আচরণ চলবে)
+            return;
+        }
+
+        // 3. মাঝখানে ক্লিক -> ইভেন্ট প্রচার বন্ধ করুন (যাতে exitPortraitOnTap না চলে)
+        event.stopPropagation();
+
+        // 4. প্লে করার চেষ্টা
+        if (blocker.id === 'blocker') {
+            // সাধারণ ভিডিও প্লেয়ার পৃষ্ঠা
+            if (!playVideoPlayer()) {
+                // ব্যর্থ হলে iframe খুঁজে পোস্টমেসেজ পাঠানো যেতে পারে (বিকল্প)
+                const iframe = document.querySelector('#player iframe');
+                if (iframe) sendPlayCommandToIframe(iframe);
+            }
+        } else if (blocker.id === 'alim-blocker') {
+            // লাইভ প্লেয়ার পৃষ্ঠা
+            const iframe = document.querySelector('#alim-player iframe');
+            if (iframe) sendPlayCommandToIframe(iframe);
+        }
+    }
+
+    // উভয় ব্লকারে ক্যাপচার ফেজে ইভেন্ট লিসেনার যোগ করুন
+    if (videoBlocker) {
+        videoBlocker.addEventListener('click', handleBlockerClick, { capture: true });
+    }
+    if (liveBlocker) {
+        liveBlocker.addEventListener('click', handleBlockerClick, { capture: true });
+    }
+
+    // ইউটিউব API লোড হওয়ার পরও কাজ করবে (পোস্টমেসেজ সবসময় কাজ করে)
+})();
+</script>
 </body>
 </html>
