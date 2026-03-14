@@ -12857,98 +12857,121 @@ const SPECIAL_SUBJECTS = [
 (function() {
     'use strict';
 
-    // ==================== ভিডিও প্লেয়ার পৃষ্ঠার জন্য (রেকর্ডেড ক্লাস) ====================
-    const videoBlocker = document.getElementById('blocker');
-    // ==================== লাইভ প্লেয়ার পৃষ্ঠার জন্য ====================
-    const liveBlocker = document.getElementById('alim-blocker');
-
     /**
-     * ইউটিউব iframe-এ প্লে কমান্ড পাঠান (লাইভ প্লেয়ারের জন্য)
+     * ফোর্সড প্লে ফাংশন - যেভাবেই হোক ভিডিও চালু করবে
      */
-    function sendPlayCommandToIframe(iframe) {
-        if (!iframe || !iframe.contentWindow) return;
-        try {
-            // YouTube IFrame API প্লে কমান্ড
-            iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-        } catch (e) {
-            console.warn('iframe-এ প্লে কমান্ড পাঠাতে সমস্যা:', e);
-        }
-    }
-
-    /**
-     * গ্লোবাল videoPlayer অবজেক্ট থাকলে প্লে করুন (রেকর্ডেড প্লেয়ারের জন্য)
-     */
-    function playVideoPlayer() {
+    function forcePlayVideo() {
+        console.log('ফোর্সড প্লে ট্রিগার হয়েছে');
+        
+        // 1. গ্লোবাল videoPlayer চেক
         if (window.videoPlayer && typeof window.videoPlayer.playVideo === 'function') {
             window.videoPlayer.playVideo();
-            return true;
+            console.log('videoPlayer.playVideo() কল করা হয়েছে');
         }
-        return false;
+        
+        // 2. সব iframe এ পোস্টমেসেজ পাঠান
+        const allIframes = document.querySelectorAll('iframe');
+        allIframes.forEach((iframe, index) => {
+            if (iframe.src && iframe.src.includes('youtube')) {
+                try {
+                    iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+                    console.log(`iframe ${index} এ পোস্টমেসেজ পাঠানো হয়েছে`);
+                } catch(e) {
+                    console.warn(`iframe ${index} এ পোস্টমেসেজ ব্যর্থ:`, e);
+                }
+            }
+        });
+        
+        // 3. যদি ইউটিউব প্লেয়ার API থেকে থাকে
+        if (typeof YT !== 'undefined' && YT.Player) {
+            const players = document.querySelectorAll('.ytp-player');
+            console.log('YT API চেক করা হচ্ছে');
+        }
+        
+        // 4. DOM এ ক্লিক ইভেন্ট পাঠান (শেষ চেষ্টা)
+        setTimeout(() => {
+            const playButtons = document.querySelectorAll('.ytp-play-button');
+            if (playButtons.length > 0) {
+                playButtons[0].click();
+                console.log('প্লে বাটনে ক্লিক করা হয়েছে');
+            }
+        }, 500);
     }
 
     /**
-     * ক্লিক ইভেন্ট হ্যান্ডলার (ক্যাপচার ফেজে)
+     * নতুন ক্লিক হ্যান্ডলার - সরাসরি blocker এলিমেন্টের উপরে
      */
-    function handleBlockerClick(event) {
-        const blocker = event.currentTarget; // বর্তমান ব্লকার এলিমেন্ট
+    function setupClickHandler() {
+        // বিদ্যমান blocker গুলো খুঁজুন
+        const blockers = ['blocker', 'alim-blocker'];
+        
+        blockers.forEach(blockerId => {
+            const blocker = document.getElementById(blockerId);
+            if (!blocker) return;
+            
+            // পুরোনো হ্যান্ডলার সরান
+            const newBlocker = blocker.cloneNode(true);
+            blocker.parentNode.replaceChild(newBlocker, blocker);
+            
+            // নতুন হ্যান্ডলার যোগ করুন
+            newBlocker.addEventListener('click', function(event) {
+                // ফুলস্ক্রিন চেক
+                if (newBlocker.closest('.fullscreen-landscape')) {
+                    return; // ফুলস্ক্রিনে কিছু করবেন না
+                }
+                
+                // ক্লিক পজিশন চেক
+                const rect = newBlocker.getBoundingClientRect();
+                const clickX = event.clientX;
+                const clickY = event.clientY;
+                
+                // মাঝখানের 40% এলাকা
+                const centerLeft = rect.left + rect.width * 0.3;
+                const centerRight = rect.left + rect.width * 0.7;
+                const centerTop = rect.top + rect.height * 0.3;
+                const centerBottom = rect.top + rect.height * 0.7;
+                
+                const isInCenter = (
+                    clickX >= centerLeft && clickX <= centerRight &&
+                    clickY >= centerTop && clickY <= centerBottom
+                );
+                
+                if (isInCenter) {
+                    console.log('✅ মাঝখানে ক্লিক detected!');
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // ভিডিও প্লে করার চেষ্টা
+                    forcePlayVideo();
+                }
+            }, true); // capture phase
+        });
+    }
 
-        // 1. ফুলস্ক্রিন মোড চেক করুন (fullscreen-landscape ক্লাস)
-        const isFullscreen = blocker.closest('.fullscreen-landscape') !== null;
-        if (isFullscreen) {
-            // ফুলস্ক্রিনে থাকলে পুরোনো আচরণই চলবে (আমরা কিছু করি না)
-            return;
-        }
-
-        // 2. ক্লিক পজিশন বের করুন
-        const rect = blocker.getBoundingClientRect();
-        const clickX = event.clientX;
-        const clickY = event.clientY;
-
-        // ব্লকারের সীমানার মধ্যে ক্লিক নিশ্চিত
-        if (clickX < rect.left || clickX > rect.right || clickY < rect.top || clickY > rect.bottom) {
-            return;
-        }
-
-        // ব্লকারের মাঝামাঝি ৫০% অঞ্চল নির্ণয় (width এর 25% থেকে 75%, height এর 25% থেকে 75%)
-        const leftBound = rect.left + rect.width * 0.25;
-        const rightBound = rect.left + rect.width * 0.75;
-        const topBound = rect.top + rect.height * 0.25;
-        const bottomBound = rect.top + rect.height * 0.75;
-
-        const isInMiddle = (clickX >= leftBound && clickX <= rightBound && clickY >= topBound && clickY <= bottomBound);
-
-        if (!isInMiddle) {
-            // মাঝখানে নয় -> কিছু করি না (পুরোনো আচরণ চলবে)
-            return;
-        }
-
-        // 3. মাঝখানে ক্লিক -> ইভেন্ট প্রচার বন্ধ করুন (যাতে exitPortraitOnTap না চলে)
-        event.stopPropagation();
-
-        // 4. প্লে করার চেষ্টা
-        if (blocker.id === 'blocker') {
-            // সাধারণ ভিডিও প্লেয়ার পৃষ্ঠা
-            if (!playVideoPlayer()) {
-                // ব্যর্থ হলে iframe খুঁজে পোস্টমেসেজ পাঠানো যেতে পারে (বিকল্প)
-                const iframe = document.querySelector('#player iframe');
-                if (iframe) sendPlayCommandToIframe(iframe);
+    // পৃষ্ঠা লোড হলে
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', setupClickHandler);
+    } else {
+        setupClickHandler();
+    }
+    
+    // পৃষ্ঠা পরিবর্তন হলে (SPA ন্যাভিগেশন)
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                setTimeout(setupClickHandler, 100);
             }
-        } else if (blocker.id === 'alim-blocker') {
-            // লাইভ প্লেয়ার পৃষ্ঠা
-            const iframe = document.querySelector('#alim-player iframe');
-            if (iframe) sendPlayCommandToIframe(iframe);
-        }
-    }
-
-    // উভয় ব্লকারে ক্যাপচার ফেজে ইভেন্ট লিসেনার যোগ করুন
-    if (videoBlocker) {
-        videoBlocker.addEventListener('click', handleBlockerClick, { capture: true });
-    }
-    if (liveBlocker) {
-        liveBlocker.addEventListener('click', handleBlockerClick, { capture: true });
-    }
-
-    // ইউটিউব API লোড হওয়ার পরও কাজ করবে (পোস্টমেসেজ সবসময় কাজ করে)
+        });
+    });
+    
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['style', 'class']
+    });
+    
+    console.log('🎯 সেন্টার ক্লিক প্লে সিস্টেম চালু হয়েছে');
 })();
 </script>
 </body>
