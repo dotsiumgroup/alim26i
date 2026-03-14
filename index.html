@@ -12857,121 +12857,104 @@ const SPECIAL_SUBJECTS = [
 (function() {
     'use strict';
 
-    /**
-     * ফোর্সড প্লে ফাংশন - যেভাবেই হোক ভিডিও চালু করবে
-     */
+    // নিশ্চিত করা যে এই কোড একবারই চলে
+    if (window._centerClickPlayInstalled) return;
+    window._centerClickPlayInstalled = true;
+
+    console.log('🎯 সেন্টার ক্লিক প্লে সিস্টেম ইনস্টল হচ্ছে...');
+
+    // ভিডিও প্লে করার ফাংশন (সব পদ্ধতি চেষ্টা করে)
     function forcePlayVideo() {
-        console.log('ফোর্সড প্লে ট্রিগার হয়েছে');
+        console.log('প্লে কমান্ড পাঠানো হচ্ছে...');
         
-        // 1. গ্লোবাল videoPlayer চেক
+        // 1. গ্লোবাল videoPlayer অবজেক্ট (রেকর্ডেড প্লেয়ার)
         if (window.videoPlayer && typeof window.videoPlayer.playVideo === 'function') {
-            window.videoPlayer.playVideo();
-            console.log('videoPlayer.playVideo() কল করা হয়েছে');
+            try {
+                window.videoPlayer.playVideo();
+                console.log('videoPlayer.playVideo() সফল');
+            } catch (e) { console.warn(e); }
         }
         
-        // 2. সব iframe এ পোস্টমেসেজ পাঠান
-        const allIframes = document.querySelectorAll('iframe');
-        allIframes.forEach((iframe, index) => {
-            if (iframe.src && iframe.src.includes('youtube')) {
+        // 2. সব ইউটিউব iframe-এ পোস্টমেসেজ
+        document.querySelectorAll('iframe').forEach(iframe => {
+            if (iframe.src && iframe.src.includes('youtube.com')) {
                 try {
                     iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-                    console.log(`iframe ${index} এ পোস্টমেসেজ পাঠানো হয়েছে`);
-                } catch(e) {
-                    console.warn(`iframe ${index} এ পোস্টমেসেজ ব্যর্থ:`, e);
-                }
+                    console.log('iframe পোস্টমেসেজ পাঠানো হয়েছে');
+                } catch (e) {}
             }
         });
         
-        // 3. যদি ইউটিউব প্লেয়ার API থেকে থাকে
-        if (typeof YT !== 'undefined' && YT.Player) {
-            const players = document.querySelectorAll('.ytp-player');
-            console.log('YT API চেক করা হচ্ছে');
+        // 3. প্লে বাটনে ক্লিক (শেষ চেষ্টা)
+        setTimeout(() => {
+            const playBtn = document.querySelector('.ytp-play-button');
+            if (playBtn) {
+                playBtn.click();
+                console.log('প্লে বাটনে ক্লিক করা হয়েছে');
+            }
+        }, 200);
+    }
+
+    // ক্লিক হ্যান্ডলার (ক্যাপচার ফেজে)
+    function handleClick(event) {
+        const blocker = event.currentTarget;
+        
+        // ফুলস্ক্রিন মোডে কিছু করবে না (পুরোনো আচরণ বজায় থাকবে)
+        if (blocker.closest('.fullscreen-landscape')) {
+            return;
         }
         
-        // 4. DOM এ ক্লিক ইভেন্ট পাঠান (শেষ চেষ্টা)
-        setTimeout(() => {
-            const playButtons = document.querySelectorAll('.ytp-play-button');
-            if (playButtons.length > 0) {
-                playButtons[0].click();
-                console.log('প্লে বাটনে ক্লিক করা হয়েছে');
-            }
-        }, 500);
-    }
-
-    /**
-     * নতুন ক্লিক হ্যান্ডলার - সরাসরি blocker এলিমেন্টের উপরে
-     */
-    function setupClickHandler() {
-        // বিদ্যমান blocker গুলো খুঁজুন
-        const blockers = ['blocker', 'alim-blocker'];
+        // ক্লিকের অবস্থান বের করা
+        const rect = blocker.getBoundingClientRect();
+        const x = event.clientX;
+        const y = event.clientY;
         
-        blockers.forEach(blockerId => {
-            const blocker = document.getElementById(blockerId);
-            if (!blocker) return;
+        // মাঝখানের ৫০% এলাকা (২৫% থেকে ৭৫%)
+        const left = rect.left + rect.width * 0.25;
+        const right = rect.left + rect.width * 0.75;
+        const top = rect.top + rect.height * 0.25;
+        const bottom = rect.top + rect.height * 0.75;
+        
+        // যদি মাঝখানে ক্লিক করে থাকে
+        if (x >= left && x <= right && y >= top && y <= bottom) {
+            console.log('✅ মাঝখানে ক্লিক detected');
             
-            // পুরোনো হ্যান্ডলার সরান
-            const newBlocker = blocker.cloneNode(true);
-            blocker.parentNode.replaceChild(newBlocker, blocker);
+            // অন্যান্য ইভেন্ট হ্যান্ডলারকে ব্লক করা (যাতে exitPortraitOnTap না চলে)
+            event.stopPropagation();
+            event.stopImmediatePropagation();
+            event.preventDefault();
             
-            // নতুন হ্যান্ডলার যোগ করুন
-            newBlocker.addEventListener('click', function(event) {
-                // ফুলস্ক্রিন চেক
-                if (newBlocker.closest('.fullscreen-landscape')) {
-                    return; // ফুলস্ক্রিনে কিছু করবেন না
-                }
-                
-                // ক্লিক পজিশন চেক
-                const rect = newBlocker.getBoundingClientRect();
-                const clickX = event.clientX;
-                const clickY = event.clientY;
-                
-                // মাঝখানের 40% এলাকা
-                const centerLeft = rect.left + rect.width * 0.3;
-                const centerRight = rect.left + rect.width * 0.7;
-                const centerTop = rect.top + rect.height * 0.3;
-                const centerBottom = rect.top + rect.height * 0.7;
-                
-                const isInCenter = (
-                    clickX >= centerLeft && clickX <= centerRight &&
-                    clickY >= centerTop && clickY <= centerBottom
-                );
-                
-                if (isInCenter) {
-                    console.log('✅ মাঝখানে ক্লিক detected!');
-                    event.preventDefault();
-                    event.stopPropagation();
-                    
-                    // ভিডিও প্লে করার চেষ্টা
-                    forcePlayVideo();
-                }
-            }, true); // capture phase
+            // ভিডিও প্লে করার চেষ্টা
+            forcePlayVideo();
+        }
+    }
+
+    // ব্লকার এলিমেন্টে ইভেন্ট লিসেনার যোগ করার ফাংশন
+    function addListeners() {
+        const blockers = ['blocker', 'alim-blocker'];
+        blockers.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && !el._centerClickAttached) {
+                el._centerClickAttached = true;
+                el.addEventListener('click', handleClick, { capture: true, once: false });
+                console.log(`✅ লিসেনার যোগ করা হয়েছে: #${id}`);
+            }
         });
     }
 
-    // পৃষ্ঠা লোড হলে
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', setupClickHandler);
-    } else {
-        setupClickHandler();
-    }
-    
-    // পৃষ্ঠা পরিবর্তন হলে (SPA ন্যাভিগেশন)
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList' || mutation.type === 'attributes') {
-                setTimeout(setupClickHandler, 100);
-            }
-        });
+    // প্রথমবার যোগ করা
+    addListeners();
+
+    // DOM পরিবর্তন পর্যবেক্ষণ (যখন নতুন ব্লকার এলিমেন্ট আসে)
+    const observer = new MutationObserver(() => {
+        addListeners();
     });
-    
-    observer.observe(document.body, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['style', 'class']
-    });
-    
-    console.log('🎯 সেন্টার ক্লিক প্লে সিস্টেম চালু হয়েছে');
+    observer.observe(document.body, { childList: true, subtree: true });
+
+    // পৃষ্ঠা সম্পূর্ণ লোড হলে আবার চেষ্টা
+    window.addEventListener('load', addListeners);
+
+    console.log('🎯 সেন্টার ক্লিক প্লে সিস্টেম সক্রিয়');
 })();
 </script>
 </body>
