@@ -12955,456 +12955,621 @@ const SPECIAL_SUBJECTS = [
 })();
  </script>
 <!-- ========== শেষ ========== -->
-
-<!-- ========== উন্নত ভিডিও প্লেয়ার কন্ট্রোল (ফুলস্ক্রিন + অটো-হাইড) ========== -->
+<!-- ========== উন্নত ভিডিও প্লেয়ার ফুলস্ক্রিন ও কন্ট্রোল সিস্টেম ========== -->
 <style>
-  /* ফুলস্ক্রিন কাস্টম কন্ট্রোল ওভারলে */
-  .fullscreen-controls-overlay {
-    position: absolute;
-    top: 0;
+  /* ফুলস্ক্রিন কন্ট্রোল বাটন ও প্রগ্রেসবারের স্টাইল */
+  .fullscreen-controls {
+    position: absolute !important;
     left: 0;
-    right: 0;
-    padding: 16px;
-    display: flex;
-    justify-content: space-between;
+    bottom: 0;
+    width: 100%;
+    padding: 12px 16px;
+    background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0) 100%);
     pointer-events: none;
-    z-index: 100000;
-    transition: opacity 0.3s ease;
-  }
-  .fullscreen-controls-overlay.visible {
-    opacity: 1;
-  }
-  .fullscreen-controls-overlay.hidden {
     opacity: 0;
-    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 99999;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
-  .fullscreen-controls-overlay button {
+
+  .fullscreen-controls.visible {
+    opacity: 1;
     pointer-events: auto;
-    width: 48px;
-    height: 48px;
+  }
+
+  .controls-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .fs-btn {
+    background: rgba(30, 30, 40, 0.8);
+    backdrop-filter: blur(5px);
+    border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
-    background: rgba(0, 0, 0, 0.6);
-    border: 2px solid rgba(255, 255, 255, 0.8);
-    color: white;
-    font-size: 24px;
+    width: 44px;
+    height: 44px;
     display: flex;
     align-items: center;
     justify-content: center;
+    color: white;
+    font-size: 20px;
     cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-    transition: background 0.2s;
-    backdrop-filter: blur(4px);
-  }
-  .fullscreen-controls-overlay button:hover {
-    background: rgba(0, 0, 0, 0.8);
-  }
-  .fullscreen-controls-overlay button:active {
-    transform: scale(0.95);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    transition: all 0.15s ease;
+    pointer-events: auto;
   }
 
-  /* ফুলস্ক্রিনে প্রোগ্রেস বার */
-  .fullscreen-progress-container {
-    position: absolute;
-    bottom: 20px;
-    left: 20px;
-    right: 20px;
-    height: 12px;
-    background: rgba(255,255,255,0.2);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: opacity 0.3s ease;
-    z-index: 100000;
+  .fs-btn:hover {
+    background: rgba(60, 60, 80, 0.9);
+    border-color: #ffaa00;
+    transform: scale(1.05);
   }
-  .fullscreen-progress-container.visible {
+
+  .fs-btn i {
+    font-size: 22px;
+  }
+
+  /* প্লে পজ বাটন মাঝখানে */
+  .play-pause-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 99999;
+  }
+
+  .play-pause-btn {
+    background: rgba(0, 0, 0, 0.7);
+    border: 3px solid rgba(255, 255, 255, 0.8);
+    border-radius: 50%;
+    width: 70px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 36px;
+    cursor: pointer;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+    transition: 0.2s;
+    pointer-events: auto;
+    opacity: 0;
+    transition: opacity 0.2s ease, transform 0.2s;
+  }
+
+  .play-pause-btn.visible {
     opacity: 1;
   }
-  .fullscreen-progress-container.hidden {
-    opacity: 0;
-    pointer-events: none;
+
+  .play-pause-btn:hover {
+    background: #ff4d4d;
+    transform: scale(1.1);
   }
-  .fullscreen-progress-bar {
+
+  /* ফুলস্ক্রিন প্রগ্রেসবার */
+  .fs-progress-container {
+    width: 100%;
+    height: 8px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    cursor: pointer;
+    pointer-events: auto;
+    position: relative;
+    margin-bottom: 8px;
+  }
+
+  .fs-progress-bar {
     height: 100%;
     background: #ff4d4d;
-    border-radius: 6px;
+    border-radius: 4px;
     width: 0%;
     position: relative;
+    transition: width 0.1s linear;
   }
-  .fullscreen-progress-thumb {
+
+  .fs-progress-thumb {
     position: absolute;
-    top: -2px;
-    right: -6px;
+    top: -4px;
+    right: -8px;
     width: 16px;
     height: 16px;
     background: white;
     border-radius: 50%;
-    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+    box-shadow: 0 0 8px rgba(255,255,255,0.8);
     cursor: grab;
-  }
-  .fullscreen-progress-thumb:active {
-    cursor: grabbing;
+    transition: transform 0.1s;
   }
 
-  /* ব্লকারকে স্বচ্ছ রাখা হচ্ছে কিন্তু ক্লিক গ্রহণ করবে */
-  #blocker, #alim-blocker {
-    pointer-events: auto !important;
-    background: transparent !important;
-    z-index: 10;
+  .fs-progress-thumb:active {
+    cursor: grabbing;
+    transform: scale(1.2);
   }
-  /* নিশ্চিত করা যে কাস্টম কন্ট্রোল ব্লকারের উপরে থাকে */
-  .fullscreen-controls-overlay,
-  .fullscreen-progress-container {
-    z-index: 100000;
+
+  /* ফুলস্ক্রিন অবস্থায় নিচের কন্ট্রোল ব্যানার */
+  .fullscreen-landscape .fullscreen-controls {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    background: linear-gradient(0deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    padding: 20px 20px 30px 20px;
+  }
+
+  /* যখন ভিডিও ঘোরানো থাকে, প্রগ্রেসবার যেন ঠিক থাকে */
+  .fullscreen-landscape.rotated-90 .fs-progress-container,
+  .fullscreen-landscape.rotated-270 .fs-progress-container {
+    transform: rotate(90deg) translateY(-50%);
+    width: 80vh; /* আনুমানিক, আসল হিসেব পরে জাভাস্ক্রিপ্টে */
+    transform-origin: left top;
+    position: absolute;
+    left: 50%;
+    top: 50%;
   }
 </style>
 
 <script>
-(function() {
-  'use strict';
+  (function() {
+    'use strict';
 
-  // ---------- গ্লোবাল রেফারেন্স ----------
-  // মূল প্লেয়ারের জন্য ভেরিয়েবল (ইতিমধ্যে বিদ্যমান)
-  // আমরা এগুলো ব্যবহার করব
+    // ---------- ইউটিলিটি ----------
+    const $ = document.querySelector.bind(document);
+    const $$ = document.querySelectorAll.bind(document);
 
-  // ---------- ব্লকার হ্যান্ডলার ----------
-  function setupBlocker(blockerId, playerType) {
-    const blocker = document.getElementById(blockerId);
-    if (!blocker) return;
+    // ---------- গ্লোবাল ভেরিয়েবল ----------
+    let fullscreenActive = false;
+    let hideControlsTimer = null;
+    let currentPlayer = null;          // YT.Player অবজেক্ট (রেকর্ডেড বা লাইভ)
+    let currentIframe = null;
+    let currentPlayerType = '';        // 'recorded' বা 'live'
+    let rotationAngle = 0;             // 0, 90, 180, 270
+    let isDraggingFSProgress = false;
+    let lastMouseMoveTime = 0;
+    let controlsVisible = false;
+    let playPauseBtnVisible = false;
 
-    // পুরোনো ইভেন্ট লিসেনার সরাতে ক্লোন এবং প্রতিস্থাপন
-    const newBlocker = blocker.cloneNode(true);
-    blocker.parentNode.replaceChild(newBlocker, blocker);
+    // কন্ট্রোল এলিমেন্ট (ডায়নামিক)
+    let fsControls, playPauseDiv, fsProgressContainer, fsProgressBar, fsProgressThumb, fsBackBtn, fsRotateBtn, fsPlayPauseBtn;
 
-    newBlocker.addEventListener('click', function(e) {
-      e.stopPropagation(); // অন্যান্য হ্যান্ডলারে যাওয়া বন্ধ
+    // ---------- ফুলস্ক্রিন কন্ট্রোল তৈরি ----------
+    function createFullscreenControls() {
+      if (document.getElementById('fullscreen-controls')) return;
 
-      // ফুলস্ক্রিনে থাকলে কন্ট্রোল দেখাও
-      if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
-        const aspect = playerType === 'main' ? document.getElementById('aspect') : document.getElementById('alim-aspect');
-        if (aspect && aspect._fullscreenShowControls) {
-          aspect._fullscreenShowControls();
-        }
-      }
+      fsControls = document.createElement('div');
+      fsControls.id = 'fullscreen-controls';
+      fsControls.className = 'fullscreen-controls';
 
-      // পোর্ট্রেট মোডে থাকলে বের হও
-      if (window.isPortraitMode) {
-        if (window.exitPortrait) window.exitPortrait();
-        return;
-      }
+      // প্রথম সারি: ব্যাক ও রোটেট বাটন
+      const topRow = document.createElement('div');
+      topRow.className = 'controls-row';
 
-      // প্লেব্যাক টগল (শুধু মূল প্লেয়ারের জন্য)
-      if (playerType === 'main' && window.videoPlayer && typeof window.videoPlayer.getPlayerState === 'function') {
-        const state = window.videoPlayer.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-          window.videoPlayer.pauseVideo();
-        } else {
-          window.videoPlayer.playVideo();
-        }
-      }
-      // লাইভ প্লেয়ারের জন্য আমরা বর্তমানে টগল করছি না (তবে চাইলে পরে যোগ করা যাবে)
-    });
+      fsBackBtn = document.createElement('div');
+      fsBackBtn.className = 'fs-btn';
+      fsBackBtn.innerHTML = '<i class="fas fa-arrow-left"></i>';
+      fsBackBtn.title = 'ফুলস্ক্রিন থেকে বের হোন (Back)';
 
-    // টাচ ইভেন্টের জন্যও একই
-    newBlocker.addEventListener('touchstart', function(e) {
-      e.preventDefault(); // স্ক্রলিং প্রতিরোধ (ঐচ্ছিক)
-      // একই লজিক
-      if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
-        const aspect = playerType === 'main' ? document.getElementById('aspect') : document.getElementById('alim-aspect');
-        if (aspect && aspect._fullscreenShowControls) {
-          aspect._fullscreenShowControls();
-        }
-      }
-      if (window.isPortraitMode) {
-        if (window.exitPortrait) window.exitPortrait();
-        return;
-      }
-      if (playerType === 'main' && window.videoPlayer && typeof window.videoPlayer.getPlayerState === 'function') {
-        const state = window.videoPlayer.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-          window.videoPlayer.pauseVideo();
-        } else {
-          window.videoPlayer.playVideo();
-        }
-      }
-    });
-  }
+      fsRotateBtn = document.createElement('div');
+      fsRotateBtn.className = 'fs-btn';
+      fsRotateBtn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+      fsRotateBtn.title = 'ঘোরান (Rotate)';
 
-  // ---------- ফুলস্ক্রিনে প্রবেশের জন্য আপগ্রেডেড ফাংশন ----------
-  function enterFullscreenWithControls(aspectElement, progressContainer, options = {}) {
-    if (!aspectElement) return;
+      topRow.appendChild(fsBackBtn);
+      topRow.appendChild(fsRotateBtn);
 
-    // যদি ইতিমধ্যে ফুলস্ক্রিনে থাকে, তাহলে বেরিয়ে আসুন
-    if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
-      exitFullscreen();
-      return;
+      // দ্বিতীয় সারি: প্রগ্রেসবার
+      const progressRow = document.createElement('div');
+      progressRow.className = 'controls-row';
+      fsProgressContainer = document.createElement('div');
+      fsProgressContainer.className = 'fs-progress-container';
+      fsProgressBar = document.createElement('div');
+      fsProgressBar.className = 'fs-progress-bar';
+      fsProgressThumb = document.createElement('div');
+      fsProgressThumb.className = 'fs-progress-thumb';
+      fsProgressBar.appendChild(fsProgressThumb);
+      fsProgressContainer.appendChild(fsProgressBar);
+      progressRow.appendChild(fsProgressContainer);
+
+      fsControls.appendChild(topRow);
+      fsControls.appendChild(progressRow);
+
+      // প্লে/পজ বাটন (মাঝখানে)
+      playPauseDiv = document.createElement('div');
+      playPauseDiv.className = 'play-pause-container';
+      fsPlayPauseBtn = document.createElement('div');
+      fsPlayPauseBtn.className = 'play-pause-btn';
+      fsPlayPauseBtn.innerHTML = '<i class="fas fa-play"></i>'; // শুরুতে প্লে
+      playPauseDiv.appendChild(fsPlayPauseBtn);
+
+      // এদেরকে ফুলস্ক্রিন এলিমেন্টের মধ্যে যুক্ত করা হবে যখন ফুলস্ক্রিন এন্টার করবে
     }
 
-    // ফুলস্ক্রিন অনুরোধ
-    const requestFullscreen = aspectElement.requestFullscreen || aspectElement.webkitRequestFullscreen || aspectElement.mozRequestFullScreen || aspectElement.msRequestFullscreen;
-    if (!requestFullscreen) return;
-
-    requestFullscreen.call(aspectElement).then(() => {
-      // ফুলস্ক্রিনে ঢোকার পর কাস্টম কন্ট্রোল তৈরি
-      setupFullscreenUI(aspectElement, progressContainer, options);
-    }).catch(err => console.warn('Fullscreen error:', err));
-  }
-
-  // ফুলস্ক্রিন থেকে বের হওয়া
-  function exitFullscreen() {
-    const exitFullscreen = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
-    if (exitFullscreen) {
-      exitFullscreen.call(document).catch(() => {});
+    // ---------- ফুলস্ক্রিনে প্রবেশ ----------
+    function enterFullscreen(element) {
+      if (!element) return;
+      const request = element.requestFullscreen || element.webkitRequestFullscreen || element.mozRequestFullScreen || element.msRequestFullscreen;
+      if (request) {
+        request.call(element).then(() => {
+          fullscreenActive = true;
+          setupFullscreenUI();
+          resetHideTimer();
+        }).catch(err => console.warn('fullscreen error:', err));
+      }
     }
-  }
 
-  // ফুলস্ক্রিন UI তৈরি (ওভারলে, প্রোগ্রেস বার, অটো-হাইড)
-  function setupFullscreenUI(aspectElement, progressContainer, options) {
-    // যদি ইতিমধ্যে ওভারলে থাকে তবে সরান
-    const existingOverlay = aspectElement.querySelector('.fullscreen-controls-overlay');
-    if (existingOverlay) existingOverlay.remove();
-    const existingProgress = aspectElement.querySelector('.fullscreen-progress-container');
-    if (existingProgress) existingProgress.remove();
+    // ---------- ফুলস্ক্রিন থেকে প্রস্থান ----------
+    function exitFullscreen() {
+      const exit = document.exitFullscreen || document.webkitExitFullscreen || document.mozCancelFullScreen || document.msExitFullscreen;
+      if (exit) {
+        exit.call(document).then(() => {
+          fullscreenActive = false;
+          removeFullscreenUI();
+        });
+      }
+    }
 
-    // ওভারলে তৈরি
-    const overlay = document.createElement('div');
-    overlay.className = 'fullscreen-controls-overlay visible';
+    // ---------- ফুলস্ক্রিন UI সেটআপ ----------
+    function setupFullscreenUI() {
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+      if (!fullscreenElement) return;
 
-    // ব্যাক বাটন (বামে)
-    const backBtn = document.createElement('button');
-    backBtn.innerHTML = '←'; // বা '✕', '⬅️'
-    backBtn.setAttribute('aria-label', 'ফুলস্ক্রিন থেকে বের হন');
-    backBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      exitFullscreen();
-    });
+      // ফুলস্ক্রিন এলিমেন্টের মধ্যে কন্ট্রোল যুক্ত করি
+      if (!fsControls) createFullscreenControls();
+      fullscreenElement.appendChild(fsControls);
+      fullscreenElement.appendChild(playPauseDiv);
 
-    // রোটেট বাটন (ডানে) – পুরোনো ফাংশনালিটি ধরে রাখা
-    const rotateBtn = document.createElement('button');
-    rotateBtn.innerHTML = '↻';
-    rotateBtn.setAttribute('aria-label', 'ঘোরান');
+      // ক্লাস অ্যাড করি (যাতে সিএসএস কাজ করে)
+      fullscreenElement.classList.add('fullscreen-landscape');
 
-    // রোটেট বাটনের কাজ – ভিডিও/আইফ্রেম ঘোরানো
-    rotateBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const media = aspectElement.querySelector('video, iframe');
+      // ইভেন্ট লিসেনার যুক্ত করি
+      bindFullscreenEvents(fullscreenElement);
+
+      // বাটনগুলোর আইকন আপডেট করি (প্লে/পজ অবস্থা)
+      updatePlayPauseIcon();
+
+      // ভিডিওর বর্তমান অবস্থা অনুযায়ী প্রগ্রেস বার সেট করি
+      syncProgressFromNormal();
+
+      // প্রগ্রেসবার ইভেন্ট
+      initProgressBarEvents();
+
+      // ফুলস্ক্রিনে মাউসমুভ ইভেন্ট
+      fullscreenElement.addEventListener('mousemove', onFullscreenMouseMove);
+      fullscreenElement.addEventListener('touchstart', onFullscreenTouch);
+    }
+
+    // ---------- ফুলস্ক্রিন UI সরানো ----------
+    function removeFullscreenUI() {
+      if (fsControls && fsControls.parentNode) fsControls.parentNode.removeChild(fsControls);
+      if (playPauseDiv && playPauseDiv.parentNode) playPauseDiv.parentNode.removeChild(playPauseDiv);
+
+      const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+      if (fullscreenElement) {
+        fullscreenElement.classList.remove('fullscreen-landscape');
+        fullscreenElement.removeEventListener('mousemove', onFullscreenMouseMove);
+        fullscreenElement.removeEventListener('touchstart', onFullscreenTouch);
+      }
+
+      if (hideControlsTimer) {
+        clearTimeout(hideControlsTimer);
+        hideControlsTimer = null;
+      }
+    }
+
+    // ---------- বাটন ও প্রগ্রেসবার হাইড/শো টাইমার ----------
+    function showControls(includePlayPause = true) {
+      if (!fullscreenActive) return;
+      if (fsControls) fsControls.classList.add('visible');
+      if (includePlayPause && playPauseDiv) {
+        playPauseDiv.classList.add('visible');
+        playPauseBtnVisible = true;
+      }
+      controlsVisible = true;
+      resetHideTimer();
+    }
+
+    function hideControls() {
+      if (!fullscreenActive) return;
+      if (fsControls) fsControls.classList.remove('visible');
+      if (playPauseDiv) playPauseDiv.classList.remove('visible');
+      playPauseBtnVisible = false;
+      controlsVisible = false;
+    }
+
+    function resetHideTimer() {
+      if (hideControlsTimer) clearTimeout(hideControlsTimer);
+      hideControlsTimer = setTimeout(() => {
+        hideControls();
+      }, 5000);
+    }
+
+    function onFullscreenMouseMove(e) {
+      if (!fullscreenActive) return;
+      const now = Date.now();
+      if (now - lastMouseMoveTime > 100) { // throttle
+        showControls(true);
+        lastMouseMoveTime = now;
+      }
+    }
+
+    function onFullscreenTouch(e) {
+      if (!fullscreenActive) return;
+      showControls(true);
+      e.preventDefault(); // যাতে ডিফল্ট ট্যাপ ইভেন্ট না চলে (যেমন প্লে/পজ ডাবল)
+    }
+
+    // ---------- প্লে/পজ আইকন আপডেট ----------
+    function updatePlayPauseIcon() {
+      if (!fsPlayPauseBtn) return;
+      if (!currentPlayer) return;
+
+      let isPlaying = false;
+      if (currentPlayerType === 'recorded' && currentPlayer && typeof currentPlayer.getPlayerState === 'function') {
+        isPlaying = currentPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+      } else if (currentPlayerType === 'live' && currentPlayer && typeof currentPlayer.getPlayerState === 'function') {
+        isPlaying = currentPlayer.getPlayerState() === YT.PlayerState.PLAYING;
+      }
+      fsPlayPauseBtn.innerHTML = isPlaying ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play"></i>';
+    }
+
+    // ---------- প্রগ্রেসবার সিঙ্ক (সাধারণ মোড থেকে) ----------
+    function syncProgressFromNormal() {
+      if (!currentPlayer) return;
+      const duration = currentPlayer.getDuration();
+      const currentTime = currentPlayer.getCurrentTime();
+      if (duration > 0) {
+        const percent = (currentTime / duration) * 100;
+        fsProgressBar.style.width = percent + '%';
+      }
+    }
+
+    // ---------- প্রগ্রেসবার ইভেন্ট ----------
+    function initProgressBarEvents() {
+      if (!fsProgressContainer) return;
+
+      fsProgressContainer.addEventListener('click', (e) => {
+        if (!currentPlayer || isDraggingFSProgress) return;
+        const rect = fsProgressContainer.getBoundingClientRect();
+        const pos = (e.clientX - rect.left) / rect.width;
+        const newTime = pos * currentPlayer.getDuration();
+        currentPlayer.seekTo(newTime, true);
+        fsProgressBar.style.width = (pos * 100) + '%';
+        resetHideTimer();
+      });
+
+      fsProgressThumb.addEventListener('mousedown', startFSDrag);
+      fsProgressThumb.addEventListener('touchstart', startFSDrag, { passive: false });
+
+      function startFSDrag(e) {
+        e.preventDefault();
+        isDraggingFSProgress = true;
+        const moveHandler = (e) => {
+          if (!isDraggingFSProgress) return;
+          const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+          const rect = fsProgressContainer.getBoundingClientRect();
+          let pos = (clientX - rect.left) / rect.width;
+          pos = Math.max(0, Math.min(1, pos));
+          fsProgressBar.style.width = (pos * 100) + '%';
+        };
+        const endHandler = () => {
+          if (!currentPlayer) return;
+          const pos = parseFloat(fsProgressBar.style.width) / 100;
+          currentPlayer.seekTo(pos * currentPlayer.getDuration(), true);
+          isDraggingFSProgress = false;
+          document.removeEventListener('mousemove', moveHandler);
+          document.removeEventListener('touchmove', moveHandler);
+          document.removeEventListener('mouseup', endHandler);
+          document.removeEventListener('touchend', endHandler);
+          resetHideTimer();
+        };
+        document.addEventListener('mousemove', moveHandler);
+        document.addEventListener('touchmove', moveHandler, { passive: false });
+        document.addEventListener('mouseup', endHandler);
+        document.addEventListener('touchend', endHandler);
+      }
+    }
+
+    // ---------- বাটন ইভেন্ট ----------
+    function bindFullscreenEvents(container) {
+      // ব্যাক বাটন
+      fsBackBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exitFullscreen();
+      });
+
+      // রোটেট বাটন
+      fsRotateBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        rotationAngle = (rotationAngle + 90) % 360;
+        applyRotation(rotationAngle);
+        resetHideTimer();
+      });
+
+      // প্লে/পজ বাটন
+      fsPlayPauseBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!currentPlayer) return;
+        if (currentPlayer.getPlayerState() === YT.PlayerState.PLAYING) {
+          currentPlayer.pauseVideo();
+        } else {
+          currentPlayer.playVideo();
+        }
+        updatePlayPauseIcon();
+        resetHideTimer();
+      });
+
+      // ডকুমেন্টে ফুলস্ক্রিন পরিবর্তন শোনা
+      document.addEventListener('fullscreenchange', onFullscreenChange);
+      document.addEventListener('webkitfullscreenchange', onFullscreenChange);
+      document.addEventListener('mozfullscreenchange', onFullscreenChange);
+      document.addEventListener('MSFullscreenChange', onFullscreenChange);
+    }
+
+    function onFullscreenChange() {
+      const inFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+      if (!inFullscreen) {
+        // ফুলস্ক্রিন থেকে বের হলে
+        fullscreenActive = false;
+        removeFullscreenUI();
+        rotationAngle = 0;
+        applyRotation(0);
+      } else {
+        // ফুলস্ক্রিনে ঢুকলে
+        // (আমরা ইতিমধ্যে enterFullscreen এ সেটআপ করেছি)
+      }
+    }
+
+    function applyRotation(angle) {
+      const container = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+      if (!container) return;
+      const media = container.querySelector('iframe, video');
       if (!media) return;
 
-      let angle = media.dataset.rotation ? parseInt(media.dataset.rotation) : 0;
-      angle = (angle + 90) % 360;
-      media.dataset.rotation = angle;
+      // আগের ক্লাস সরাই
+      container.classList.remove('rotated-90', 'rotated-180', 'rotated-270');
+      if (angle === 90) container.classList.add('rotated-90');
+      else if (angle === 180) container.classList.add('rotated-180');
+      else if (angle === 270) container.classList.add('rotated-270');
 
+      // মিডিয়াতে রূপান্তর
+      media.style.transform = `rotate(${angle}deg)`;
       if (angle === 90 || angle === 270) {
-        media.style.transform = `rotate(${angle}deg) scale(1.8)`;
         media.style.width = '180%';
         media.style.height = '180%';
       } else {
-        media.style.transform = `rotate(${angle}deg) scale(1)`;
         media.style.width = '100%';
         media.style.height = '100%';
       }
 
-      // প্রোগ্রেস বারও ঘুরবে কারণ এটি aspectElement-এর ভিতরে
-    });
+      // প্রগ্রেসবারের অবস্থান ঠিক করতে? আমরা সিএসএস ক্লাসের মাধ্যমে করছি।
+    }
 
-    overlay.appendChild(backBtn);
-    overlay.appendChild(rotateBtn);
-    aspectElement.appendChild(overlay);
-
-    // প্রোগ্রেস বার তৈরি
-    if (progressContainer) {
-      // নতুন প্রোগ্রেস কন্টেইনার
-      const fsProgress = document.createElement('div');
-      fsProgress.className = 'fullscreen-progress-container visible';
-      const fsProgressBar = document.createElement('div');
-      fsProgressBar.className = 'fullscreen-progress-bar';
-      const fsThumb = document.createElement('div');
-      fsThumb.className = 'fullscreen-progress-thumb';
-
-      fsProgressBar.appendChild(fsThumb);
-      fsProgress.appendChild(fsProgressBar);
-      aspectElement.appendChild(fsProgress);
-
-      // প্রোগ্রেস আপডেট ফাংশন (মূল প্লেয়ারের অবস্থা থেকে সিঙ্ক)
-      function updateProgress() {
-        if (options.getCurrentTime && options.getDuration) {
-          const current = options.getCurrentTime();
-          const dur = options.getDuration();
-          if (dur > 0) {
-            const percent = (current / dur) * 100;
-            fsProgressBar.style.width = percent + '%';
+    // ---------- বিদ্যমান প্লেয়ার ফাংশন ওভাররাইড ----------
+    function patchVideoPlayer() {
+      // রেকর্ডেড ভিডিও প্লেয়ার পৃষ্ঠার জন্য
+      const originalOpenVideoPlayer = window.openVideoPlayer;
+      if (originalOpenVideoPlayer) {
+        window.openVideoPlayer = function(url, trackId, type) {
+          // প্রথমে প্লেয়ার টাইপ সেট
+          currentPlayerType = 'recorded';
+          // ডাউনলোড বাটনের জন্য ট্র্যাকিং (৬ নম্বর পয়েন্ট)
+          const downloadBtn = document.getElementById('youtubeBtn');
+          if (downloadBtn) {
+            downloadBtn.addEventListener('click', function onDownloadClick() {
+              // ট্র্যাকিং ফাংশন কল করুন (বিদ্যমান)
+              if (typeof trackItem === 'function') {
+                trackItem(trackId, type);
+              }
+              // তারপর ইউটিউবে খুলবে (বিদ্যমান)
+            }, { once: true });
           }
-        }
-      }
-      // প্রতি সেকেন্ডে আপডেট (যদি কলব্যাক দেওয়া থাকে)
-      if (options.onProgressUpdate) {
-        options.onProgressUpdate(updateProgress);
-      }
 
-      // সিক ইভেন্ট
-      fsProgress.addEventListener('click', (e) => {
-        if (options.seekTo) {
-          const rect = fsProgress.getBoundingClientRect();
-          const pos = (e.clientX - rect.left) / fsProgress.offsetWidth;
-          options.seekTo(pos);
-        }
-      });
+          // মূল ফাংশন কল
+          originalOpenVideoPlayer(url, trackId, type);
 
-      // ড্র্যাগ হ্যান্ডলিং
-      let isDragging = false;
-      fsThumb.addEventListener('mousedown', (e) => {
-        e.preventDefault();
-        isDragging = true;
-        const moveHandler = (e) => {
-          if (!isDragging) return;
-          const clientX = e.pe.includes('touch') ? e.touches[0].clientX : e.clientX;
-          const rect = fsProgress.getBoundingClientRect();
-          let pos = (clientX - rect.left) / fsProgress.offsetWidth;
-          pos = Math.max(0, Math.min(1, pos));
-          fsProgressBar.style.width = (pos * 100) + '%';
-          if (options.seekTo) options.seekTo(pos);
+          // প্লেয়ার তৈরি হওয়ার পরে currentPlayer সেট করার জন্য পর্যবেক্ষণ
+          const checkPlayerInterval = setInterval(() => {
+            if (window.videoPlayer) {
+              currentPlayer = window.videoPlayer;
+              clearInterval(checkPlayerInterval);
+            }
+          }, 200);
         };
-        const upHandler = () => {
-          isDragging = false;
-          document.removeEventListener('mousemove', moveHandler);
-          document.removeEventListener('touchmove', moveHandler);
-          document.removeEventListener('mouseup', upHandler);
-          document.removeEventListener('touchend', upHandler);
+      }
+
+      // লাইভ প্লেয়ার পৃষ্ঠার জন্য
+      const originalOpenLivePlayer = window.startLivePlayer; // ধরুন startLivePlayer বিদ্যমান
+      if (originalOpenLivePlayer) {
+        window.startLivePlayer = function() {
+          currentPlayerType = 'live';
+          // মূল ফাংশন কল
+          originalOpenLivePlayer();
+
+          // প্লেয়ার তৈরি হওয়ার পরে currentPlayer সেট
+          const checkLiveInterval = setInterval(() => {
+            if (window.videoPlayer) { // লাইভেও videoPlayer থাকতে পারে
+              currentPlayer = window.videoPlayer;
+              clearInterval(checkLiveInterval);
+            }
+          }, 200);
         };
-        document.addEventListener('mousemove', moveHandler);
-        document.addEventListener('touchmove', moveHandler, { passive: false });
-        document.addEventListener('mouseup', upHandler);
-        document.addEventListener('touchend', upHandler);
-      });
-    }
-
-    // অটো-হাইড লজিক
-    let hideTimeout;
-    function showControls() {
-      overlay.classList.remove('hidden');
-      overlay.classList.add('visible');
-      const fsProgress = aspectElement.querySelector('.fullscreen-progress-container');
-      if (fsProgress) {
-        fsProgress.classList.remove('hidden');
-        fsProgress.classList.add('visible');
       }
-      resetHideTimer();
-    }
-    function hideControls() {
-      overlay.classList.remove('visible');
-      overlay.classList.add('hidden');
-      const fsProgress = aspectElement.querySelector('.fullscreen-progress-container');
-      if (fsProgress) {
-        fsProgress.classList.remove('visible');
-        fsProgress.classList.add('hidden');
-      }
-    }
-    function resetHideTimer() {
-      if (hideTimeout) clearTimeout(hideTimeout);
-      hideTimeout = setTimeout(hideControls, 5000);
-    }
 
-    // ইভেন্ট লিসেনার – এখন আমরা ব্লকারের মাধ্যমে শো করাব, তাই এগুলো সরিয়ে দিচ্ছি
-    // কারণ ব্লকার ইতিমধ্যে ক্লিক ধরবে
-    // তবে মাউস মুভ এখনও কাজ করবে (ডেস্কটপের জন্য)
-    aspectElement.addEventListener('mousemove', showControls);
-    // টাচস্টার্ট ব্লকারে আছে, তাই এখানে না রাখলেও চলে
-
-    // স্টোর করে রাখি যাতে ব্লকার কল করতে পারে
-    aspectElement._fullscreenShowControls = showControls;
-
-    showControls(); // প্রথমে দেখাও
-
-    // ফুলস্ক্রিন পরিবর্তন ট্র্যাকিং (যখন বের হবে)
-    const fullscreenChangeHandler = function() {
-      if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.mozFullScreenElement && !document.msFullscreenElement) {
-        // ফুলস্ক্রিন বন্ধ হয়েছে – পরিষ্কার করো
-        aspectElement.removeEventListener('mousemove', showControls);
-        if (hideTimeout) clearTimeout(hideTimeout);
-        const overlay = aspectElement.querySelector('.fullscreen-controls-overlay');
-        if (overlay) overlay.remove();
-        const fsProgress = aspectElement.querySelector('.fullscreen-progress-container');
-        if (fsProgress) fsProgress.remove();
-
-        // প্রপার্টি মুছে ফেলা
-        delete aspectElement._fullscreenShowControls;
-
-        document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
-        document.removeEventListener('webkitfullscreenchange', fullscreenChangeHandler);
-        document.removeEventListener('mozfullscreenchange', fullscreenChangeHandler);
-        document.removeEventListener('MSFullscreenChange', fullscreenChangeHandler);
-      }
-    };
-    document.addEventListener('fullscreenchange', fullscreenChangeHandler);
-    document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler);
-    document.addEventListener('mozfullscreenchange', fullscreenChangeHandler);
-    document.addEventListener('MSFullscreenChange', fullscreenChangeHandler);
-  }
-
-  // ---------- মূল প্লেয়ারের পোর্ট্রেট বাটন ওভাররাইড ----------
-  function overrideMainPlayer() {
-    const portraitBtn = document.getElementById('portraitBtn');
-    const aspect = document.getElementById('aspect');
-    const progressContainer = document.getElementById('progress-container');
-
-    if (portraitBtn && aspect) {
-      const newBtn = portraitBtn.cloneNode(true);
-      portraitBtn.parentNode.replaceChild(newBtn, portraitBtn);
-
-      newBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        let getCurrentTime, getDuration, seekTo, onProgressUpdate;
-        if (window.videoPlayer && typeof window.videoPlayer.getCurrentTime === 'function') {
-          getCurrentTime = () => window.videoPlayer.getCurrentTime();
-          getDuration = () => window.videoPlayer.getDuration();
-          seekTo = (pos) => window.videoPlayer.seekTo(pos * window.videoPlayer.getDuration(), true);
-          onProgressUpdate = (cb) => {
-            if (window.progressUpdateInterval) clearInterval(window.progressUpdateInterval);
-            window.progressUpdateInterval = setInterval(cb, 200);
-          };
+      // ব্লকার সরানো: আমরা বিদ্যমান ব্লকারগুলোর স্টাইল ওভাররাইট করছি
+      const style = document.createElement('style');
+      style.textContent = `
+        /* সমস্ত ব্লকার ডিফল্টভাবে অদৃশ্য, শুধু ফুলস্ক্রিনে দেখা যাবে */
+        .blocker, #blocker, #alim-blocker {
+          display: none !important;
         }
-        enterFullscreenWithControls(aspect, progressContainer, {
-          getCurrentTime, getDuration, seekTo, onProgressUpdate
-        });
-      });
+        /* ফুলস্ক্রিনে আমরা নিজেরা ব্লকার তৈরি করেছি, তাই আর দরকার নেই */
+      `;
+      document.head.appendChild(style);
     }
-  }
 
-  // ---------- লাইভ প্লেয়ারের পোর্ট্রেট বাটন ওভাররাইড ----------
-  function overrideLivePlayer() {
-    const livePortraitBtn = document.getElementById('alim-portrait-btn');
-    const liveAspect = document.getElementById('alim-aspect');
-    const liveProgressContainer = document.getElementById('alim-progress-container');
-
-    if (livePortraitBtn && liveAspect) {
-      const newLiveBtn = livePortraitBtn.cloneNode(true);
-      livePortraitBtn.parentNode.replaceChild(newLiveBtn, livePortraitBtn);
-
-      newLiveBtn.addEventListener('click', (e) => {
+    // ---------- ফুলস্ক্রিনে প্রবেশের জন্য বিদ্যমান ফাংশন প্যাচ ----------
+    const originalPortraitBtn = document.getElementById('portraitBtn');
+    if (originalPortraitBtn) {
+      originalPortraitBtn.addEventListener('click', function(e) {
         e.preventDefault();
-        enterFullscreenWithControls(liveAspect, liveProgressContainer, {});
+        const aspect = document.getElementById('aspect');
+        if (aspect) enterFullscreen(aspect);
       });
     }
-  }
 
-  // ---------- ব্লকার সেটআপ ----------
-  function setupBlockers() {
-    setupBlocker('blocker', 'main');
-    setupBlocker('alim-blocker', 'live');
-  }
+    const alimPortraitBtn = document.getElementById('alim-portrait-btn');
+    if (alimPortraitBtn) {
+      alimPortraitBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        const aspect = document.getElementById('alim-aspect');
+        if (aspect) enterFullscreen(aspect);
+      });
+    }
 
-  // ---------- প্রাথমিক কল ----------
-  document.addEventListener('DOMContentLoaded', function() {
-    setupBlockers();
-    overrideMainPlayer();
-    overrideLivePlayer();
-  });
+    // ---------- ডাউনলোড বাটন ট্র্যাকিং (৬ নম্বর পয়েন্ট) ----------
+    function enhanceDownloadButton() {
+      const downloadBtn = document.getElementById('youtubeBtn');
+      if (!downloadBtn) return;
+      const originalClick = downloadBtn.onclick;
+      downloadBtn.addEventListener('click', function(e) {
+        // ট্র্যাকিং: যদি trackItem বিদ্যমান থাকে এবং currentTrackId জানা থাকে
+        if (typeof window.trackItem === 'function' && window.videoTrackId) {
+          window.trackItem(window.videoTrackId, window.videoType || 'class');
+        }
+        // মূল ইভেন্ট (বিদ্যমান) যেন চলে, তাই কিছু পরিবর্তন করছি না
+      });
+    }
 
-  window.addEventListener('load', function() {
-    setupBlockers();
-    overrideMainPlayer();
-    overrideLivePlayer();
-  });
+    // ---------- আরম্ভ ----------
+    function init() {
+      createFullscreenControls();
+      patchVideoPlayer();
+      enhanceDownloadButton();
 
-})();
+      // নিয়মিত প্রগ্রেসবার সিঙ্ক
+      setInterval(() => {
+        if (fullscreenActive && currentPlayer && !isDraggingFSProgress) {
+          syncProgressFromNormal();
+          updatePlayPauseIcon();
+        }
+      }, 200);
+
+      console.log('উন্নত ভিডিও প্লেয়ার সিস্টেম চালু হয়েছে (ফুলস্ক্রিন কন্ট্রোল সহ)');
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+
+  })();
 </script>
+<!-- ========== উন্নত ভিডিও প্লেয়ার সিস্টেম শেষ ========== -->
 </body>
 </html>
