@@ -12853,7 +12853,7 @@ const SPECIAL_SUBJECTS = [
 })();
 </script>
 <!-- ========== শেষ ========== >
-  <!-- ========== উন্নত ভিডিও প্লেয়ার কন্ট্রোল (ফুলস্ক্রিন + অটো-হাইড) ========== -->
+<!-- ========== উন্নত ভিডিও প্লেয়ার কন্ট্রোল (ফুলস্ক্রিন + অটো-হাইড) – ব্লকার ছাড়া ========== -->
 <style>
   /* ফুলস্ক্রিন কাস্টম কন্ট্রোল ওভারলে */
   .fullscreen-controls-overlay {
@@ -12864,7 +12864,7 @@ const SPECIAL_SUBJECTS = [
     padding: 16px;
     display: flex;
     justify-content: space-between;
-    pointer-events: none;
+    pointer-events: none; /* clicks pass through to iframe except on buttons */
     z-index: 100000;
     transition: opacity 0.3s ease;
   }
@@ -12876,7 +12876,7 @@ const SPECIAL_SUBJECTS = [
     pointer-events: none;
   }
   .fullscreen-controls-overlay button {
-    pointer-events: auto;
+    pointer-events: auto; /* buttons are clickable */
     width: 48px;
     height: 48px;
     border-radius: 50%;
@@ -12911,6 +12911,7 @@ const SPECIAL_SUBJECTS = [
     cursor: pointer;
     transition: opacity 0.3s ease;
     z-index: 100000;
+    pointer-events: auto; /* can click/drag */
   }
   .fullscreen-progress-container.visible {
     opacity: 1;
@@ -12941,16 +12942,9 @@ const SPECIAL_SUBJECTS = [
     cursor: grabbing;
   }
 
-  /* ব্লকারকে স্বচ্ছ রাখা হচ্ছে কিন্তু ক্লিক গ্রহণ করবে */
+  /* ব্লকার সরিয়ে ফেলা হয়েছে – এগুলো আর ব্যবহার করা হবে না */
   #blocker, #alim-blocker {
-    pointer-events: auto !important;
-    background: transparent !important;
-    z-index: 10;
-  }
-  /* নিশ্চিত করা যে কাস্টম কন্ট্রোল ব্লকারের উপরে থাকে */
-  .fullscreen-controls-overlay,
-  .fullscreen-progress-container {
-    z-index: 100000;
+    display: none !important;
   }
 </style>
 
@@ -12958,71 +12952,40 @@ const SPECIAL_SUBJECTS = [
 (function() {
   'use strict';
 
-  // ---------- গ্লোবাল রেফারেন্স ----------
-  // মূল প্লেয়ারের জন্য ভেরিয়েবল (ইতিমধ্যে বিদ্যমান)
-  // আমরা এগুলো ব্যবহার করব
+  // ---------- হেল্পার ফাংশন ----------
+  // ব্লকার সরানো
+  function removeBlockers() {
+    const blocker = document.getElementById('blocker');
+    if (blocker) blocker.style.display = 'none';
+    const liveBlocker = document.getElementById('alim-blocker');
+    if (liveBlocker) liveBlocker.style.display = 'none';
+  }
 
-  // ---------- ব্লকার হ্যান্ডলার ----------
-  function setupBlocker(blockerId, playerType) {
-    const blocker = document.getElementById(blockerId);
-    if (!blocker) return;
+  // ---------- ইভেন্ট লিসেনার যোগ করা (ট্যাপ শনাক্ত) ----------
+  function setupTapListeners() {
+    const aspectMain = document.getElementById('aspect');
+    const aspectLive = document.getElementById('alim-aspect');
 
-    // পুরোনো ইভেন্ট লিসেনার সরাতে ক্লোন এবং প্রতিস্থাপন
-    const newBlocker = blocker.cloneNode(true);
-    blocker.parentNode.replaceChild(newBlocker, blocker);
-
-    newBlocker.addEventListener('click', function(e) {
-      e.stopPropagation(); // অন্যান্য হ্যান্ডলারে যাওয়া বন্ধ
-
+    function onTap(e) {
       // ফুলস্ক্রিনে থাকলে কন্ট্রোল দেখাও
       if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
-        const aspect = playerType === 'main' ? document.getElementById('aspect') : document.getElementById('alim-aspect');
+        const aspect = e.currentTarget;
         if (aspect && aspect._fullscreenShowControls) {
           aspect._fullscreenShowControls();
         }
       }
+      // নরমাল মোডে (ছোট প্লেয়ার) – আমরা কোনো কাস্টম কন্ট্রোল দেখাই না
+      // তবে চাইলে এখানে কিছু করা যেতে পারে
+    }
 
-      // পোর্ট্রেট মোডে থাকলে বের হও
-      if (window.isPortraitMode) {
-        if (window.exitPortrait) window.exitPortrait();
-        return;
-      }
-
-      // প্লেব্যাক টগল (শুধু মূল প্লেয়ারের জন্য)
-      if (playerType === 'main' && window.videoPlayer && typeof window.videoPlayer.getPlayerState === 'function') {
-        const state = window.videoPlayer.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-          window.videoPlayer.pauseVideo();
-        } else {
-          window.videoPlayer.playVideo();
-        }
-      }
-      // লাইভ প্লেয়ারের জন্য আমরা বর্তমানে টগল করছি না (তবে চাইলে পরে যোগ করা যাবে)
-    });
-
-    // টাচ ইভেন্টের জন্যও একই
-    newBlocker.addEventListener('touchstart', function(e) {
-      e.preventDefault(); // স্ক্রলিং প্রতিরোধ (ঐচ্ছিক)
-      // একই লজিক
-      if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
-        const aspect = playerType === 'main' ? document.getElementById('aspect') : document.getElementById('alim-aspect');
-        if (aspect && aspect._fullscreenShowControls) {
-          aspect._fullscreenShowControls();
-        }
-      }
-      if (window.isPortraitMode) {
-        if (window.exitPortrait) window.exitPortrait();
-        return;
-      }
-      if (playerType === 'main' && window.videoPlayer && typeof window.videoPlayer.getPlayerState === 'function') {
-        const state = window.videoPlayer.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-          window.videoPlayer.pauseVideo();
-        } else {
-          window.videoPlayer.playVideo();
-        }
-      }
-    });
+    if (aspectMain) {
+      aspectMain.addEventListener('click', onTap);
+      aspectMain.addEventListener('touchstart', onTap, { passive: true });
+    }
+    if (aspectLive) {
+      aspectLive.addEventListener('click', onTap);
+      aspectLive.addEventListener('touchstart', onTap, { passive: true });
+    }
   }
 
   // ---------- ফুলস্ক্রিনে প্রবেশের জন্য আপগ্রেডেড ফাংশন ----------
@@ -13098,8 +13061,6 @@ const SPECIAL_SUBJECTS = [
         media.style.width = '100%';
         media.style.height = '100%';
       }
-
-      // প্রোগ্রেস বারও ঘুরবে কারণ এটি aspectElement-এর ভিতরে
     });
 
     overlay.appendChild(backBtn);
@@ -13108,7 +13069,6 @@ const SPECIAL_SUBJECTS = [
 
     // প্রোগ্রেস বার তৈরি
     if (progressContainer) {
-      // নতুন প্রোগ্রেস কন্টেইনার
       const fsProgress = document.createElement('div');
       fsProgress.className = 'fullscreen-progress-container visible';
       const fsProgressBar = document.createElement('div');
@@ -13120,7 +13080,7 @@ const SPECIAL_SUBJECTS = [
       fsProgress.appendChild(fsProgressBar);
       aspectElement.appendChild(fsProgress);
 
-      // প্রোগ্রেস আপডেট ফাংশন (মূল প্লেয়ারের অবস্থা থেকে সিঙ্ক)
+      // প্রোগ্রেস আপডেট ফাংশন
       function updateProgress() {
         if (options.getCurrentTime && options.getDuration) {
           const current = options.getCurrentTime();
@@ -13131,7 +13091,6 @@ const SPECIAL_SUBJECTS = [
           }
         }
       }
-      // প্রতি সেকেন্ডে আপডেট (যদি কলব্যাক দেওয়া থাকে)
       if (options.onProgressUpdate) {
         options.onProgressUpdate(updateProgress);
       }
@@ -13199,13 +13158,13 @@ const SPECIAL_SUBJECTS = [
       hideTimeout = setTimeout(hideControls, 5000);
     }
 
-    // ইভেন্ট লিসেনার – এখন আমরা ব্লকারের মাধ্যমে শো করাব, তাই এগুলো সরিয়ে দিচ্ছি
-    // কারণ ব্লকার ইতিমধ্যে ক্লিক ধরবে
-    // তবে মাউস মুভ এখনও কাজ করবে (ডেস্কটপের জন্য)
+    // ইভেন্ট লিসেনার – এখন আমরা ট্যাপ শনাক্ত করতে aspectElement-এ লিসেনার রাখব
+    // এগুলি ইতিমধ্যে setupTapListeners-এ যোগ করা হয়েছে
+    // তবে মাউস মুভ ডেস্কটপের জন্য কাজ করবে
     aspectElement.addEventListener('mousemove', showControls);
-    // টাচস্টার্ট ব্লকারে আছে, তাই এখানে না রাখলেও চলে
+    // ট্যাপ ইভেন্ট ইতিমধ্যে গ্লোবাল লিসেনার থেকে আসবে, তাই এখানে আলাদা না রাখলেও চলে
 
-    // স্টোর করে রাখি যাতে ব্লকার কল করতে পারে
+    // স্টোর করে রাখি যাতে গ্লোবাল ট্যাপ লিসেনার কল করতে পারে
     aspectElement._fullscreenShowControls = showControls;
 
     showControls(); // প্রথমে দেখাও
@@ -13221,7 +13180,6 @@ const SPECIAL_SUBJECTS = [
         const fsProgress = aspectElement.querySelector('.fullscreen-progress-container');
         if (fsProgress) fsProgress.remove();
 
-        // প্রপার্টি মুছে ফেলা
         delete aspectElement._fullscreenShowControls;
 
         document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
@@ -13282,21 +13240,17 @@ const SPECIAL_SUBJECTS = [
     }
   }
 
-  // ---------- ব্লকার সেটআপ ----------
-  function setupBlockers() {
-    setupBlocker('blocker', 'main');
-    setupBlocker('alim-blocker', 'live');
-  }
-
   // ---------- প্রাথমিক কল ----------
   document.addEventListener('DOMContentLoaded', function() {
-    setupBlockers();
+    removeBlockers();
+    setupTapListeners();
     overrideMainPlayer();
     overrideLivePlayer();
   });
 
   window.addEventListener('load', function() {
-    setupBlockers();
+    removeBlockers();
+    setupTapListeners();
     overrideMainPlayer();
     overrideLivePlayer();
   });
